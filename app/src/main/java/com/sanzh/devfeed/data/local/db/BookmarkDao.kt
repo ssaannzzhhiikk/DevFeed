@@ -20,4 +20,7 @@ interface BookmarkDao {
 
     @Query("SELECT EXISTS(SELECT 1 FROM bookmarks WHERE id = :id)")
     suspend fun isBookmarked(id: Long): Boolean
+
+    @Query("DELETE FROM bookmarks WHERE id = :id")
+    suspend fun deleteById(id: Long)
 }

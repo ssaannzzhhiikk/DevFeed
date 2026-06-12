@@ -52,7 +52,39 @@ class FeedRepository(private val context: Context) {
     }
     fun getBookmarks(): Flow<List<BookmarkEntity>> = dao.getAllBookmarks()
     suspend fun saveBookmark(entity: BookmarkEntity) = dao.insert(entity)
-    suspend fun removeBookmark(entity: BookmarkEntity) = dao.delete(entity)
+    suspend fun removeBookmark(id: Long) = dao.deleteById(id)
+    suspend fun isBookmarked(id: Long): Boolean = dao.isBookmarked(id)
+
+    suspend fun getRepoById(id: Long): GithubRepo? = try {
+        val dto = githubApi.getRepository(id)
+        GithubRepo(
+            id = dto.id,
+            name = dto.name,
+            fullName = dto.fullName,
+            description = dto.description,
+            language = dto.language,
+            stars = dto.stars,
+            forks = dto.forks,
+            ownerAvatarUrl = dto.owner.avatarUrl,
+            htmlUrl = dto.htmlUrl
+        )
+    } catch (_: Exception) { null }
+
+    suspend fun getStoryById(id: Long): NewsArticle? {
+        return try {
+            val dto = hnApi.getStory(id)
+            NewsArticle(
+                id = dto.id,
+                title = dto.title ?: return null,
+                url = dto.url,
+                score = dto.score,
+                commentCount = dto.descendants,
+                author = dto.by,
+                timeAgo = formatTimeAgo(dto.time)
+            )
+        } catch (_: Exception) { null }
+    }
+
     private fun formatTimeAgo(epochSeconds: Long): String {
         val diff = System.currentTimeMillis() / 1000 - epochSeconds
         return when {

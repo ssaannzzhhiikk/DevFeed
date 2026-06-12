@@ -22,14 +22,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.outlined.BookmarkBorder
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -40,10 +46,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.sanzh.devfeed.DevFeedApp
+import com.sanzh.devfeed.data.local.db.BookmarkEntity
 import com.sanzh.devfeed.data.repository.FeedRepository
 import com.sanzh.devfeed.domain.model.FeedItem
 import com.sanzh.devfeed.domain.model.GithubRepo
 import com.sanzh.devfeed.domain.model.NewsArticle
+import kotlinx.coroutines.launch
 
 @Composable
 fun FeedScreen(onItemClick: (Long, String) -> Unit) {
@@ -147,6 +155,15 @@ fun SectionHeaderItem(title: String) {
 
 @Composable
 fun RepoCard(repo: GithubRepo, onClick: () -> Unit) {
+    val context = LocalContext.current
+    val repository = remember { FeedRepository(context) }
+    val scope = rememberCoroutineScope()
+    var isBookmarked by remember { mutableStateOf(false) }
+
+    LaunchedEffect(repo.id) {
+        isBookmarked = repository.isBookmarked(repo.id)
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -184,12 +201,48 @@ fun RepoCard(repo: GithubRepo, onClick: () -> Unit) {
                         MaterialTheme.typography.labelSmall)
                 }
             }
+            IconButton(
+                onClick = {
+                    scope.launch {
+                        if (isBookmarked) {
+                            repository.removeBookmark(repo.id)
+                        } else {
+                            repository.saveBookmark(
+                                BookmarkEntity(
+                                    id = repo.id,
+                                    title = repo.fullName,
+                                    url = repo.htmlUrl,
+                                    type = "repo",
+                                    subtitle = "${repo.language ?: ""} · ⭐${repo.stars} · 🍴${repo.forks}",
+                                    imageUrl = repo.ownerAvatarUrl
+                                )
+                            )
+                        }
+                        isBookmarked = !isBookmarked
+                    }
+                }
+            ) {
+                Icon(
+                    imageVector = if (isBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                    contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
+                    tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
 
 @Composable
 fun ArticleCard(article: NewsArticle, onClick: () -> Unit) {
+    val context = LocalContext.current
+    val repository = remember { FeedRepository(context) }
+    val scope = rememberCoroutineScope()
+    var isBookmarked by remember { mutableStateOf(false) }
+
+    LaunchedEffect(article.id) {
+        isBookmarked = repository.isBookmarked(article.id)
+    }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -198,11 +251,41 @@ fun ArticleCard(article: NewsArticle, onClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = article.title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = article.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(
+                    onClick = {
+                        scope.launch {
+                            if (isBookmarked) {
+                                repository.removeBookmark(article.id)
+                            } else {
+                                repository.saveBookmark(
+                                    BookmarkEntity(
+                                        id = article.id,
+                                        title = article.title,
+                                        url = article.url ?: "",
+                                        type = "article",
+                                        subtitle = "by ${article.author} · score: ${article.score}",
+                                        imageUrl = null
+                                    )
+                                )
+                            }
+                            isBookmarked = !isBookmarked
+                        }
+                    }
+                ) {
+                    Icon(
+                        imageVector = if (isBookmarked) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                        contentDescription = if (isBookmarked) "Remove bookmark" else "Add bookmark",
+                        tint = if (isBookmarked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
             article.url?.let {
                 Text(
                     text = it,
