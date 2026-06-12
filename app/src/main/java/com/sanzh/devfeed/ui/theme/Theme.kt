@@ -5,20 +5,27 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
+import com.sanzh.devfeed.DevFeedApp
 
 @Composable
-fun DevFeedTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit
-) {
-    val colorScheme = if (darkTheme) {
-        darkColorScheme()
+fun DevFeedTheme(content: @Composable () -> Unit) {
+    val context = LocalContext.current
+    val systemInDark = isSystemInDarkTheme()
+    
+    // Observe DataStore dark mode preference with safety for Previews
+    val isDark = if (LocalInspectionMode.current) {
+        systemInDark
     } else {
-        lightColorScheme()
+        val prefs = remember { (context.applicationContext as DevFeedApp).preferencesManager }
+        prefs.isDarkMode.collectAsState(initial = systemInDark).value
     }
 
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = if (isDark) darkColorScheme() else lightColorScheme(),
         content = content
     )
 }
